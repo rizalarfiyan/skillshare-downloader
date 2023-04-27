@@ -13,13 +13,16 @@ import (
 	"strings"
 
 	"github.com/rizalarfiyan/skillshare-downloader/constants"
+	"github.com/rizalarfiyan/skillshare-downloader/logger"
 	"github.com/rizalarfiyan/skillshare-downloader/models"
 	"github.com/rizalarfiyan/skillshare-downloader/utils"
+	"github.com/sirupsen/logrus"
 )
 
 type skillshare struct {
 	ctx  context.Context
 	conf models.AppConfig
+	log  *logrus.Logger
 
 	dir struct {
 		base     string
@@ -32,6 +35,7 @@ type skillshare struct {
 func NewSkillshare(ctx context.Context) Skillshare {
 	return &skillshare{
 		ctx: ctx,
+		log: logger.Get(),
 	}
 }
 

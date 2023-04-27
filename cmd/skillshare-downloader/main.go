@@ -2,13 +2,28 @@ package main
 
 import (
 	"context"
-	"log"
 
+	"github.com/rizalarfiyan/skillshare-downloader/logger"
 	"github.com/rizalarfiyan/skillshare-downloader/models"
 	"github.com/rizalarfiyan/skillshare-downloader/services"
+	"github.com/sirupsen/logrus"
 )
 
+func init() {
+	logger.Init()
+}
+
 func main() {
+	log := logger.Get()
+	defer func() {
+		if rec := recover(); rec != nil {
+			log.Fatalln("Panic: ", rec)
+		}
+	}()
+
+	// update with cli
+	logger.SetLevel(logrus.DebugLevel)
+
 	ctx := context.Background()
 	err := services.NewSkillshare(ctx).Run(models.Config{
 		UrlOrId:   "1088693386",

@@ -1,8 +1,12 @@
 package constants
 
+import "time"
+
 const (
-	DefaultLanguage = "en"
-	DefaultDir      = "./downloaded"
+	DefaultLanguage        = "en"
+	DefaultDir             = "./downloaded"
+	DefaultLogFormat       = "[%lvl%]: %time% - %msg% \n"
+	DefaultTimestampFormat = time.DateTime
 
 	FolderName        = "[%d] %s"
 	FilenameClassData = "class_data.json"
