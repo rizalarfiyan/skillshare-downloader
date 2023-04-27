@@ -3,18 +3,27 @@ package services
 import (
 	"context"
 	"fmt"
+
+	"github.com/rizalarfiyan/skillshare-downloader/models"
 )
 
 type skillshare struct {
-	ctx context.Context
+	ctx  context.Context
+	conf models.AppConfig
 }
 
 func NewSkillshare(ctx context.Context) Skillshare {
-	return &skillshare{ctx}
+	return &skillshare{
+		ctx: ctx,
+	}
 }
 
-func (s *skillshare) Run() error {
+func (s *skillshare) Run(conf models.Config) error {
 	s.splash()
+	err := s.conf.FromConfig(conf)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

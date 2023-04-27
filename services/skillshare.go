@@ -1,5 +1,7 @@
 package services
 
+import "github.com/rizalarfiyan/skillshare-downloader/models"
+
 type Skillshare interface {
-	Run() error
+	Run(conf models.Config) error
 }
