@@ -77,7 +77,7 @@ func (s *skillshare) initDir() error {
 	}
 
 	dirs = utils.Filter(dirs, func(dir string) bool {
-		return strings.HasPrefix(dir, s.conf.ID)
+		return strings.HasPrefix(dir, fmt.Sprintf("[%s]", s.conf.ID))
 	})
 
 	if len(dirs) != 1 {
@@ -157,7 +157,7 @@ func (s *skillshare) fetchClassApi() (*models.ClassApiResponse, error) {
 }
 
 func (s *skillshare) createJsonClass(data models.ClassApiResponse) error {
-	value, err := json.MarshalIndent(data, "", " ")
+	value, err := json.MarshalIndent(data, "", "    ")
 	if err != nil {
 		return err
 	}
@@ -224,5 +224,4 @@ func (s *skillshare) loadClassData() (*models.ClassApiResponse, error) {
 	}
 
 	return getData, nil
-	// return nil, nil
 }
