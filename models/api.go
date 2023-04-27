@@ -1,6 +1,6 @@
 package models
 
-type ClassApiResponse struct {
+type ClassData struct {
 	ID                         int    `json:"id"`
 	Gid                        string `json:"gid"`
 	Sku                        int    `json:"sku"`
@@ -109,4 +109,14 @@ type ClassApiResponse struct {
 type ClassApiLink struct {
 	Href  string `json:"href"`
 	Title string `json:"title"`
+}
+
+func (cd *ClassData) IsValidVideoId() bool {
+	for _, session := range cd.Embedded.Sessions.Embedded.Sessions {
+		if session.VideoHashedID == "" {
+			return false
+		}
+	}
+
+	return true
 }

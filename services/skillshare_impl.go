@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -118,7 +119,7 @@ func (s *skillshare) loadDir() error {
 	return nil
 }
 
-func (s *skillshare) fetchClassApi() (*models.ClassApiResponse, error) {
+func (s *skillshare) fetchClassApi() (*models.ClassData, error) {
 	client := &http.Client{}
 	url := fmt.Sprintf(constants.APIClass, s.conf.ID)
 	req, err := http.NewRequestWithContext(s.ctx, "GET", url, nil)
@@ -142,7 +143,7 @@ func (s *skillshare) fetchClassApi() (*models.ClassApiResponse, error) {
 		return nil, fmt.Errorf("Skillshare class not found")
 	}
 
-	dest := &models.ClassApiResponse{}
+	dest := &models.ClassData{}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
@@ -156,7 +157,7 @@ func (s *skillshare) fetchClassApi() (*models.ClassApiResponse, error) {
 	return dest, nil
 }
 
-func (s *skillshare) createJsonClass(data models.ClassApiResponse) error {
+func (s *skillshare) createJsonClass(data models.ClassData) error {
 	value, err := json.MarshalIndent(data, "", "    ")
 	if err != nil {
 		return err
@@ -171,7 +172,7 @@ func (s *skillshare) createJsonClass(data models.ClassApiResponse) error {
 	return nil
 }
 
-func (s *skillshare) loadClassDataCache() (*models.ClassApiResponse, error) {
+func (s *skillshare) loadClassDataCache() (*models.ClassData, error) {
 	if s.dir.base == "" || s.dir.json == "" {
 		return nil, nil
 	}
@@ -186,16 +187,21 @@ func (s *skillshare) loadClassDataCache() (*models.ClassApiResponse, error) {
 		return nil, err
 	}
 
-	dest := &models.ClassApiResponse{}
+	dest := &models.ClassData{}
 	err = json.Unmarshal(data, dest)
 	if err != nil {
 		return nil, err
 	}
 
+	if !dest.IsValidVideoId() {
+		fmt.Println("Invalid video id, fetch new api again")
+		return nil, nil
+	}
+
 	return dest, nil
 }
 
-func (s *skillshare) loadClassData() (*models.ClassApiResponse, error) {
+func (s *skillshare) loadClassData() (*models.ClassData, error) {
 	getCache, err := s.loadClassDataCache()
 	if err != nil {
 		return nil, err
@@ -221,6 +227,10 @@ func (s *skillshare) loadClassData() (*models.ClassApiResponse, error) {
 	err = s.createJsonClass(*getData)
 	if err != nil {
 		return nil, err
+	}
+
+	if !getData.IsValidVideoId() {
+		return nil, errors.New("invalid video id, please use php session id with premium account")
 	}
 
 	return getData, nil
