@@ -1,6 +1,7 @@
 package models
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -143,14 +144,33 @@ type SkillshareClass struct {
 }
 
 type SkillshareVideo struct {
-	ID                   int    `json:"id"`
-	Title                string `json:"title"`
-	VideoID              string `json:"video_id"`
-	VideoDuration        string `json:"video_duration"`
-	VideoDurationSeconds int    `json:"video_duration_seconds"`
-	VideoThumbnailURL    string `json:"video_thumbnail_url"`
-	VideoMidThumbnailURL string `json:"video_mid_thumbnail_url"`
-	ImageThumbnail       string `json:"image_thumbnail"`
+	ID                   int                       `json:"id"`
+	Title                string                    `json:"title"`
+	VideoID              string                    `json:"video_id"`
+	VideoDuration        string                    `json:"video_duration"`
+	VideoDurationSeconds int                       `json:"video_duration_seconds"`
+	VideoThumbnailURL    string                    `json:"video_thumbnail_url"`
+	VideoMidThumbnailURL string                    `json:"video_mid_thumbnail_url"`
+	ImageThumbnail       string                    `json:"image_thumbnail"`
+	Sources              []SkillshareVideoSource   `json:"sources"`
+	Subtitles            []SkillshareVideoSubtitle `json:"subtitles"`
+}
+
+type SkillshareVideoSource struct {
+	Src        string `json:"src"`
+	AvgBitrate int    `json:"avg_bitrate"`
+	Codec      string `json:"codec"`
+	Container  string `json:"container"`
+	Duration   int    `json:"duration"`
+	Height     int    `json:"height"`
+	Size       int    `json:"size"`
+	Width      int    `json:"width"`
+}
+
+type SkillshareVideoSubtitle struct {
+	Src   string `json:"src"`
+	Lang  string `json:"lang"`
+	Label string `json:"label"`
 }
 
 func (cd *ClassData) Mapper() SkillshareClass {
@@ -186,6 +206,49 @@ func (cd *ClassData) Mapper() SkillshareClass {
 	}
 
 	return ssData
+}
+
+func (sc *SkillshareVideo) AddSourceSubtitle(video VideoData) {
+	sources := []SkillshareVideoSource{}
+	tempIdx := make(map[string]bool)
+	sort.Slice(video.Sources, func(i, j int) bool {
+		return video.Sources[i].Src > video.Sources[j].Src
+	})
+	for _, source := range video.Sources {
+		if source.Codecs == "avc1,mp4a" || source.Codec == "" {
+			continue
+		}
+		key := strings.TrimPrefix(source.Src, "https://")
+		key = strings.TrimPrefix(key, "http://")
+		if _, isExist := tempIdx[key]; !isExist {
+			tempIdx[key] = true
+			sources = append(sources, SkillshareVideoSource{
+				Src:        source.Src,
+				AvgBitrate: source.AvgBitrate,
+				Codec:      source.Codec,
+				Container:  source.Container,
+				Duration:   source.Duration,
+				Height:     source.Height,
+				Size:       source.Size,
+				Width:      source.Width,
+			})
+		}
+	}
+
+	sc.Sources = sources
+
+	subtitles := []SkillshareVideoSubtitle{}
+	for _, subtitle := range video.TextTracks {
+		if subtitle.Kind != "subtitles" {
+			continue
+		}
+		subtitles = append(subtitles, SkillshareVideoSubtitle{
+			Src:   subtitle.Src,
+			Lang:  subtitle.Srclang,
+			Label: subtitle.Label,
+		})
+	}
+	sc.Subtitles = subtitles
 }
 
 type VideoData struct {

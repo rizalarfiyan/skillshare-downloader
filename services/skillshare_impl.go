@@ -50,10 +50,12 @@ func (s *skillshare) Run(conf models.Config) error {
 		return err
 	}
 
-	err = s.loadVideoData(*ssClass)
+	ssData, err := s.loadVideoData(*ssClass)
 	if err != nil {
 		return err
 	}
+
+	fmt.Println(ssData)
 
 	return nil
 }
@@ -294,21 +296,23 @@ func (s *skillshare) loadClassData() (*models.ClassData, error) {
 	return getData, nil
 }
 
-func (s *skillshare) loadVideoData(ssClass models.ClassData) error {
+func (s *skillshare) loadVideoData(ssClass models.ClassData) (*models.SkillshareClass, error) {
 	ss := ssClass.Mapper()
 
 	for idx, val := range ss.Videos[:1] {
 		fmt.Printf("%03d. %s\n", idx+1, val.Title)
 		video, err := s.fetchVideoApi(val.ID)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		err = s.createJsonVideo(idx+1, val, *video)
 		if err != nil {
-			return err
+			return nil, err
 		}
+
+		ss.Videos[idx].AddSourceSubtitle(*video)
 	}
 
-	return nil
+	return &ss, nil
 }
