@@ -11,12 +11,14 @@ type Config struct {
 	UrlOrId   string
 	SessionId string
 	Lang      string
+	Dir       string
 }
 
 type AppConfig struct {
 	ID        string
 	SessionId string
 	Lang      string
+	Dir       string
 }
 
 func (conf *AppConfig) parseID(config Config) error {
@@ -69,6 +71,15 @@ func (conf *AppConfig) parseLanguage(config Config) {
 	conf.Lang = config.Lang
 }
 
+func (conf *AppConfig) parseDirectory(config Config) {
+	if config.Dir == "" {
+		conf.Dir = constants.DefaultDir
+		return
+	}
+
+	conf.Dir = config.Dir
+}
+
 func (conf *AppConfig) FromConfig(config Config) error {
 	if err := conf.parseID(config); err != nil {
 		return err
@@ -79,6 +90,7 @@ func (conf *AppConfig) FromConfig(config Config) error {
 	}
 
 	conf.parseLanguage(config)
+	conf.parseDirectory(config)
 
 	return nil
 }
