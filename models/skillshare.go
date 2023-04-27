@@ -1,5 +1,7 @@
 package models
 
+import "github.com/rizalarfiyan/skillshare-downloader/utils"
+
 type ClassData struct {
 	ID                         int    `json:"id"`
 	Gid                        string `json:"gid"`
@@ -119,4 +121,57 @@ func (cd *ClassData) IsValidVideoId() bool {
 	}
 
 	return true
+}
+
+type SkillshareClass struct {
+	ID                         int               `json:"id"`
+	Title                      string            `json:"title"`
+	ProjectTitle               string            `json:"project_title"`
+	Category                   string            `json:"category"`
+	TotalVideosDuration        string            `json:"total_videos_duration"`
+	TotalVideosDurationSeconds int               `json:"total_videos_duration_seconds"`
+	ImageHuge                  string            `json:"image_huge"`
+	ImageSmall                 string            `json:"image_small"`
+	ImageThumbnail             string            `json:"image_thumbnail"`
+	Videos                     []SkillshareVideo `json:"videos"`
+}
+
+type SkillshareVideo struct {
+	ID                   int    `json:"id"`
+	Title                string `json:"title"`
+	VideoID              string `json:"video_id"`
+	VideoDuration        string `json:"video_duration"`
+	VideoDurationSeconds int    `json:"video_duration_seconds"`
+	VideoThumbnailURL    string `json:"video_thumbnail_url"`
+	VideoMidThumbnailURL string `json:"video_mid_thumbnail_url"`
+	ImageThumbnail       string `json:"image_thumbnail"`
+}
+
+func (cd *ClassData) Mapper() SkillshareClass {
+	ssData := SkillshareClass{
+		ID:                         cd.ID,
+		Title:                      utils.DecodeAscii(cd.Title),
+		ProjectTitle:               cd.ProjectTitle,
+		Category:                   cd.Category,
+		TotalVideosDuration:        cd.TotalVideosDuration,
+		TotalVideosDurationSeconds: cd.TotalVideosDurationSeconds,
+		ImageHuge:                  cd.ImageHuge,
+		ImageSmall:                 cd.ImageSmall,
+		ImageThumbnail:             cd.ImageThumbnail,
+	}
+
+	for _, session := range cd.Embedded.Sessions.Embedded.Sessions {
+		ssData.Videos = append(ssData.Videos, SkillshareVideo{
+			ID:                   session.ID,
+			Title:                utils.DecodeAscii(session.Title),
+			VideoID:              session.VideoHashedID,
+			VideoDuration:        session.VideoDuration,
+			VideoDurationSeconds: session.VideoDurationSeconds,
+			VideoThumbnailURL:    session.VideoThumbnailURL,
+			VideoMidThumbnailURL: session.VideoMidThumbnailURL,
+			ImageThumbnail:       session.ImageThumbnail,
+		})
+	}
+
+	return ssData
 }

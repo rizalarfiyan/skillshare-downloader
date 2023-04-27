@@ -45,7 +45,12 @@ func (s *skillshare) Run(conf models.Config) error {
 		return err
 	}
 
-	_, err := s.loadClassData()
+	ssClass, err := s.loadClassData()
+	if err != nil {
+		return err
+	}
+
+	err = s.loadVideoData(*ssClass)
 	if err != nil {
 		return err
 	}
@@ -234,4 +239,14 @@ func (s *skillshare) loadClassData() (*models.ClassData, error) {
 	}
 
 	return getData, nil
+}
+
+func (s *skillshare) loadVideoData(ssClass models.ClassData) error {
+	ss := ssClass.Mapper()
+
+	for idx, val := range ss.Videos {
+		fmt.Printf("%03d. %s\n", idx+1, val.Title)
+	}
+
+	return nil
 }
