@@ -85,7 +85,7 @@ func (s *skillshare) initDir() error {
 	}
 
 	dirs = utils.Filter(dirs, func(dir string) bool {
-		return strings.HasPrefix(dir, fmt.Sprintf("[%s]", s.conf.ID))
+		return strings.HasPrefix(dir, fmt.Sprintf("[%d]", s.conf.ID))
 	})
 
 	if len(dirs) != 1 {

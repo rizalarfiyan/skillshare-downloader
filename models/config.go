@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"regexp"
+	"strconv"
 
 	"github.com/rizalarfiyan/skillshare-downloader/constants"
 )
@@ -15,7 +16,7 @@ type Config struct {
 }
 
 type AppConfig struct {
-	ID        string
+	ID        int
 	SessionId string
 	Lang      string
 	Dir       string
@@ -32,7 +33,11 @@ func (conf *AppConfig) parseID(config Config) error {
 	}
 
 	if isClassId {
-		conf.ID = config.UrlOrId
+		classId, err := strconv.Atoi(config.UrlOrId)
+		if err != nil {
+			return err
+		}
+		conf.ID = classId
 		return nil
 	}
 
@@ -46,7 +51,11 @@ func (conf *AppConfig) parseID(config Config) error {
 		if conf.Lang == "" {
 			conf.Lang = language
 		}
-		conf.ID = match[3]
+		classId, err := strconv.Atoi(match[3])
+		if err != nil {
+			return err
+		}
+		conf.ID = classId
 		return nil
 	}
 

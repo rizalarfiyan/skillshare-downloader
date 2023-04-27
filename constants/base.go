@@ -4,7 +4,7 @@ const (
 	DefaultLanguage = "en"
 	DefaultDir      = "./downloaded"
 
-	FolderName        = "[%s] %s"
+	FolderName        = "[%d] %s"
 	FilenameClassData = "class_data.json"
 	FilenameVideoData = "%03d_%s_data.json"
 
