@@ -166,7 +166,6 @@ func (s *skillshare) fetchVideoApi(videoID int) (*models.VideoData, error) {
 	fmt.Printf("fetching video api %d\n", videoID)
 	client := &http.Client{}
 	url := fmt.Sprintf(constants.APIVideo, constants.BrightcoveAccountId, videoID)
-	fmt.Println(url)
 	req, err := http.NewRequestWithContext(s.ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -182,7 +181,6 @@ func (s *skillshare) fetchVideoApi(videoID int) (*models.VideoData, error) {
 		return nil, err
 	}
 
-	fmt.Println(resp.StatusCode)
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, fmt.Errorf("Skillshare video not found")
 	}
@@ -201,13 +199,29 @@ func (s *skillshare) fetchVideoApi(videoID int) (*models.VideoData, error) {
 	return dest, nil
 }
 
-func (s *skillshare) createJsonClass(data models.ClassData) error {
-	value, err := json.MarshalIndent(data, "", "    ")
+func (s *skillshare) createJsonClass(classData models.ClassData) error {
+	value, err := json.MarshalIndent(classData, "", "    ")
 	if err != nil {
 		return err
 	}
 
 	fileJson := path.Join(s.dir.json, constants.FilenameClassData)
+	err = os.WriteFile(fileJson, value, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return nil
+}
+
+func (s *skillshare) createJsonVideo(idx int, videoData models.SkillshareVideo, sourceData models.VideoData) error {
+	value, err := json.MarshalIndent(sourceData, "", "    ")
+	if err != nil {
+		return err
+	}
+
+	filename := fmt.Sprintf(constants.FilenameVideoData, idx, utils.ToSnakeCase(videoData.Title))
+	fileJson := path.Join(s.dir.json, filename)
 	err = os.WriteFile(fileJson, value, os.ModePerm)
 	if err != nil {
 		log.Fatal(err)
@@ -260,7 +274,7 @@ func (s *skillshare) loadClassData() (*models.ClassData, error) {
 		return nil, err
 	}
 
-	safeTitle := utils.SafeFolderName(getData.Title)
+	safeTitle := utils.SafeName(getData.Title)
 	folderName := fmt.Sprintf(constants.FolderName, s.conf.ID, safeTitle)
 	s.dir.base = path.Join(s.conf.Dir, folderName)
 	err = s.loadDir()
@@ -285,7 +299,12 @@ func (s *skillshare) loadVideoData(ssClass models.ClassData) error {
 
 	for idx, val := range ss.Videos[:1] {
 		fmt.Printf("%03d. %s\n", idx+1, val.Title)
-		_, err := s.fetchVideoApi(val.ID)
+		video, err := s.fetchVideoApi(val.ID)
+		if err != nil {
+			return err
+		}
+
+		err = s.createJsonVideo(idx+1, val, *video)
 		if err != nil {
 			return err
 		}

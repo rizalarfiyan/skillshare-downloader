@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func SafeFolderName(filename string) string {
+func SafeName(filename string) string {
 	str := DecodeAscii(filename)
 	reSafe := regexp.MustCompile(`(?m)[^A-Za-z0-9-_ ]+`)
 	reSpace := regexp.MustCompile(`\s+`)
@@ -26,4 +26,24 @@ func DecodeAscii(str string) string {
 	}
 
 	return str
+}
+
+func ToSnakeCase(str string) string {
+	reSafe := regexp.MustCompile(`(?m)[^A-Za-z0-9- ]+`)
+	safeStr := reSafe.ReplaceAllString(str, "")
+	str = strings.ReplaceAll(safeStr, " ", "_")
+	var sb strings.Builder
+	var prev rune
+	for _, curr := range str {
+		if curr >= 'A' && curr <= 'Z' {
+			if prev >= 'a' && prev <= 'z' {
+				sb.WriteRune('_')
+			}
+			sb.WriteRune(curr + ('a' - 'A'))
+		} else {
+			sb.WriteRune(curr)
+		}
+		prev = curr
+	}
+	return sb.String()
 }
