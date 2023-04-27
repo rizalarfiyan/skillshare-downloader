@@ -1,6 +1,12 @@
 package models
 
-import "github.com/rizalarfiyan/skillshare-downloader/utils"
+import (
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/rizalarfiyan/skillshare-downloader/utils"
+)
 
 type ClassData struct {
 	ID                         int    `json:"id"`
@@ -28,14 +34,14 @@ type ClassData struct {
 	RelativePublishTime        string `json:"relative_publish_time"`
 	Actions                    []any  `json:"actions"`
 	Links                      struct {
-		Self     ClassApiLink `json:"self"`
-		Teacher  ClassApiLink `json:"teacher"`
-		Units    ClassApiLink `json:"units"`
-		Sessions ClassApiLink `json:"sessions"`
-		Category ClassApiLink `json:"category"`
-		Students ClassApiLink `json:"students"`
-		Projects ClassApiLink `json:"projects"`
-		Reviews  ClassApiLink `json:"reviews"`
+		Self     ClassDataLink `json:"self"`
+		Teacher  ClassDataLink `json:"teacher"`
+		Units    ClassDataLink `json:"units"`
+		Sessions ClassDataLink `json:"sessions"`
+		Category ClassDataLink `json:"category"`
+		Students ClassDataLink `json:"students"`
+		Projects ClassDataLink `json:"projects"`
+		Reviews  ClassDataLink `json:"reviews"`
 	} `json:"_links"`
 	Embedded struct {
 		Teacher struct {
@@ -57,24 +63,24 @@ type ClassData struct {
 			IsProfilePrivate bool   `json:"is_profile_private"`
 			VanityUsername   string `json:"vanity_username"`
 			Links            struct {
-				Self          ClassApiLink `json:"self"`
-				MyClasses     ClassApiLink `json:"my_classes"`
-				Completions   ClassApiLink `json:"completions"`
-				Discussions   ClassApiLink `json:"discussions"`
-				Followers     ClassApiLink `json:"followers"`
-				Following     ClassApiLink `json:"following"`
-				Notifications ClassApiLink `json:"notifications"`
-				Projects      ClassApiLink `json:"projects"`
-				Rosters       ClassApiLink `json:"rosters"`
-				UserTags      ClassApiLink `json:"userTags"`
-				Votes         ClassApiLink `json:"votes"`
-				Wishlist      ClassApiLink `json:"wishlist"`
+				Self          ClassDataLink `json:"self"`
+				MyClasses     ClassDataLink `json:"my_classes"`
+				Completions   ClassDataLink `json:"completions"`
+				Discussions   ClassDataLink `json:"discussions"`
+				Followers     ClassDataLink `json:"followers"`
+				Following     ClassDataLink `json:"following"`
+				Notifications ClassDataLink `json:"notifications"`
+				Projects      ClassDataLink `json:"projects"`
+				Rosters       ClassDataLink `json:"rosters"`
+				UserTags      ClassDataLink `json:"userTags"`
+				Votes         ClassDataLink `json:"votes"`
+				Wishlist      ClassDataLink `json:"wishlist"`
 			} `json:"_links"`
 		} `json:"teacher"`
 		Units    []any `json:"units"`
 		Sessions struct {
 			Links struct {
-				Self ClassApiLink `json:"self"`
+				Self ClassDataLink `json:"self"`
 			} `json:"_links"`
 			Embedded struct {
 				Sessions []struct {
@@ -96,11 +102,11 @@ type ClassData struct {
 					UpdateTime           string `json:"update_time"`
 					IsCloudflareReady    bool   `json:"is_cloudflare_ready"`
 					Links                struct {
-						Self        ClassApiLink `json:"self"`
-						Download    ClassApiLink `json:"download"`
-						ParentClass ClassApiLink `json:"parentClass"`
-						Stream      ClassApiLink `json:"stream"`
-						Unit        any          `json:"unit"`
+						Self        ClassDataLink `json:"self"`
+						Download    ClassDataLink `json:"download"`
+						ParentClass ClassDataLink `json:"parentClass"`
+						Stream      ClassDataLink `json:"stream"`
+						Unit        any           `json:"unit"`
 					} `json:"_links"`
 				} `json:"sessions"`
 			} `json:"_embedded"`
@@ -108,7 +114,7 @@ type ClassData struct {
 	} `json:"_embedded"`
 }
 
-type ClassApiLink struct {
+type ClassDataLink struct {
 	Href  string `json:"href"`
 	Title string `json:"title"`
 }
@@ -161,8 +167,14 @@ func (cd *ClassData) Mapper() SkillshareClass {
 	}
 
 	for _, session := range cd.Embedded.Sessions.Embedded.Sessions {
+		var videoId int
+		videoArr := strings.Split(session.VideoHashedID, ":")
+		if len(videoArr) > 1 {
+			videoId, _ = strconv.Atoi(videoArr[1])
+		}
+
 		ssData.Videos = append(ssData.Videos, SkillshareVideo{
-			ID:                   session.ID,
+			ID:                   videoId,
 			Title:                utils.DecodeAscii(session.Title),
 			VideoID:              session.VideoHashedID,
 			VideoDuration:        session.VideoDuration,
@@ -174,4 +186,59 @@ func (cd *ClassData) Mapper() SkillshareClass {
 	}
 
 	return ssData
+}
+
+type VideoData struct {
+	Poster           string            `json:"poster"`
+	Thumbnail        string            `json:"thumbnail"`
+	PosterSources    []VideoDataSource `json:"poster_sources"`
+	ThumbnailSources []VideoDataSource `json:"thumbnail_sources"`
+	Description      any               `json:"description"`
+	Tags             []any             `json:"tags"`
+	CuePoints        []any             `json:"cue_points"`
+	CustomFields     struct {
+	} `json:"custom_fields"`
+	AccountID string `json:"account_id"`
+	Sources   []struct {
+		Codecs      string `json:"codecs,omitempty"`
+		ExtXVersion string `json:"ext_x_version,omitempty"`
+		Src         string `json:"src"`
+		Type        string `json:"type,omitempty"`
+		Profiles    string `json:"profiles,omitempty"`
+		AvgBitrate  int    `json:"avg_bitrate,omitempty"`
+		Codec       string `json:"codec,omitempty"`
+		Container   string `json:"container,omitempty"`
+		Duration    int    `json:"duration,omitempty"`
+		Height      int    `json:"height,omitempty"`
+		Size        int    `json:"size,omitempty"`
+		Width       int    `json:"width,omitempty"`
+	} `json:"sources"`
+	Name            string `json:"name"`
+	ReferenceID     any    `json:"reference_id"`
+	LongDescription any    `json:"long_description"`
+	Duration        int    `json:"duration"`
+	Economics       string `json:"economics"`
+	TextTracks      []struct {
+		ID        string            `json:"id"`
+		AccountID string            `json:"account_id"`
+		Src       string            `json:"src"`
+		Srclang   string            `json:"srclang"`
+		Label     string            `json:"label"`
+		Kind      string            `json:"kind"`
+		MimeType  string            `json:"mime_type"`
+		AssetID   any               `json:"asset_id"`
+		Sources   []VideoDataSource `json:"sources"`
+		Default   bool              `json:"default"`
+	} `json:"text_tracks"`
+	PublishedAt    time.Time `json:"published_at"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	OfflineEnabled bool      `json:"offline_enabled"`
+	Link           any       `json:"link"`
+	ID             string    `json:"id"`
+	AdKeys         any       `json:"ad_keys"`
+}
+
+type VideoDataSource struct {
+	Src string `json:"src"`
 }

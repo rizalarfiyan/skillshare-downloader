@@ -162,6 +162,45 @@ func (s *skillshare) fetchClassApi() (*models.ClassData, error) {
 	return dest, nil
 }
 
+func (s *skillshare) fetchVideoApi(videoID int) (*models.VideoData, error) {
+	fmt.Printf("fetching video api %d\n", videoID)
+	client := &http.Client{}
+	url := fmt.Sprintf(constants.APIVideo, constants.BrightcoveAccountId, videoID)
+	fmt.Println(url)
+	req, err := http.NewRequestWithContext(s.ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header = http.Header{
+		"Accept":     {fmt.Sprintf("application/json;pk=%s", constants.PolicyKey)},
+		"User-Agent": {"Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0"},
+		"Origin":     {"https://www.skillshare.com/"},
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println(resp.StatusCode)
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("Skillshare video not found")
+	}
+
+	dest := &models.VideoData{}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(body, dest)
+	if err != nil {
+		return nil, err
+	}
+
+	return dest, nil
+}
+
 func (s *skillshare) createJsonClass(data models.ClassData) error {
 	value, err := json.MarshalIndent(data, "", "    ")
 	if err != nil {
@@ -244,8 +283,12 @@ func (s *skillshare) loadClassData() (*models.ClassData, error) {
 func (s *skillshare) loadVideoData(ssClass models.ClassData) error {
 	ss := ssClass.Mapper()
 
-	for idx, val := range ss.Videos {
+	for idx, val := range ss.Videos[:1] {
 		fmt.Printf("%03d. %s\n", idx+1, val.Title)
+		_, err := s.fetchVideoApi(val.ID)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
