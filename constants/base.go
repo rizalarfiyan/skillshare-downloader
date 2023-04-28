@@ -3,7 +3,7 @@ package constants
 import "time"
 
 const (
-	DefaultLanguage        = "en"
+	DefaultLanguage        = "en-US"
 	DefaultDir             = "./downloaded"
 	DefaultLogFormat       = "[%lvl%]: %time% - %msg% \n"
 	DefaultTimestampFormat = time.DateTime
