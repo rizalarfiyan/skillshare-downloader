@@ -6,7 +6,6 @@ import (
 	"github.com/rizalarfiyan/skillshare-downloader/logger"
 	"github.com/rizalarfiyan/skillshare-downloader/models"
 	"github.com/rizalarfiyan/skillshare-downloader/services"
-	"github.com/sirupsen/logrus"
 )
 
 func init() {
@@ -22,7 +21,7 @@ func main() {
 	}()
 
 	// update with cli
-	logger.SetLevel(logrus.DebugLevel)
+	// logger.SetLevel(logrus.DebugLevel)
 
 	ctx := context.Background()
 	err := services.NewSkillshare(ctx).Run(models.Config{
