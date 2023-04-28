@@ -2,18 +2,22 @@ package models
 
 import (
 	"errors"
+	"fmt"
+	"path/filepath"
 	"regexp"
 	"strconv"
 
 	"github.com/rizalarfiyan/skillshare-downloader/constants"
 	"github.com/rizalarfiyan/skillshare-downloader/logger"
+	"github.com/rizalarfiyan/skillshare-downloader/utils"
 )
 
 type Config struct {
-	UrlOrId string
-	Cookies string
-	Lang    string
-	Dir     string
+	UrlOrId    string
+	Cookies    string
+	CookieFile string
+	Lang       string
+	Dir        string
 }
 
 type AppConfig struct {
@@ -26,7 +30,7 @@ type AppConfig struct {
 func (conf *AppConfig) parseID(config Config) error {
 	logger.Debug("Parse ID from config")
 	if config.UrlOrId == "" {
-		return errors.New("class id or url is required")
+		return fmt.Errorf("class id or url is required")
 	}
 
 	logger.Debug("Checking url or id skillshare")
@@ -71,14 +75,31 @@ func (conf *AppConfig) parseID(config Config) error {
 }
 
 func (conf *AppConfig) parseCookies(config Config) error {
-	if config.Cookies == "" {
-		return errors.New("cookies is required")
+	if config.Cookies == "" && config.CookieFile == "" {
+		return errors.New("cookies or cookie-file is required")
 	}
 
-	logger.Debug("Set cookies with string cookies")
-	conf.Cookies = config.Cookies
-	logger.Info("Loaded raw text cookies")
-	return nil
+	if config.Cookies != "" {
+		logger.Debug("Set cookies with string cookies")
+		conf.Cookies = config.Cookies
+		logger.Info("Loaded raw text cookies")
+		return nil
+	}
+
+	extension := filepath.Ext(config.CookieFile)
+	switch extension {
+	case ".txt":
+		logger.Debug("Set cookies with file txt cookies")
+		cookie, err := utils.GetCookieTxt(config.CookieFile)
+		if err != nil {
+			return err
+		}
+		conf.Cookies = cookie
+		logger.Info("Loaded file txt cookies")
+		return nil
+	default:
+		return errors.New("invalid cookie file extension")
+	}
 }
 
 func (conf *AppConfig) parseLanguage(config Config) {

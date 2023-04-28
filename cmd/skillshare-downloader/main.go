@@ -44,20 +44,26 @@ func main() {
 			},
 		},
 		HelpName:  "Skillshare Downloader",
-		UsageText: "skillshare-dl --class <class> -cookies <cookies> [args and such]\n",
+		UsageText: "skillshare-dl --class <class> --cookie-file <cookie-path> [args and such]\n",
 		ArgsUsage: "[args and such]",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "class",
 				Aliases:  []string{"c"},
 				Usage:    "Identity skillshare class id or skillshare class url",
-				Category: "Required:",
+				Category: "Class:",
 			},
 			&cli.StringFlag{
 				Name:     "cookies",
 				Aliases:  []string{"co"},
-				Usage:    "String cookies for get content to skillshare, visit https://api.skillshare.com with logged in membership account, inspect element, goto tab console, type document.cookie, copy the string and paste here",
-				Category: "Required:",
+				Usage:    "String cookies for get content to skillshare",
+				Category: "Required Cookies:",
+			},
+			&cli.StringFlag{
+				Name:     "cookie-file",
+				Aliases:  []string{"cf"},
+				Usage:    "Cookie File (.txt) for get content to skillshare",
+				Category: "Required Cookies:",
 			},
 			&cli.StringFlag{
 				Name:        "language",
@@ -87,10 +93,11 @@ func main() {
 			}
 
 			err := services.NewSkillshare(ctx).Run(models.Config{
-				UrlOrId: cliCtx.String("class"),
-				Cookies: cliCtx.String("cookies"),
-				Lang:    cliCtx.String("language"),
-				Dir:     cliCtx.String("directory"),
+				UrlOrId:    cliCtx.String("class"),
+				Cookies:    cliCtx.String("cookies"),
+				CookieFile: cliCtx.String("cookie-file"),
+				Lang:       cliCtx.String("language"),
+				Dir:        cliCtx.String("directory"),
 			})
 			if err != nil {
 				return err

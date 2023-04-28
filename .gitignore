@@ -26,6 +26,8 @@ tmp/
 
 ### Development ###
 downloaded/
+cookies.txt
+cookie.txt
 
 ### VSCode ###
 .vscode/*
