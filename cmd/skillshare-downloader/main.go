@@ -44,7 +44,7 @@ func main() {
 			},
 		},
 		HelpName:  "Skillshare Downloader",
-		UsageText: "skillshare-dl -c <class> -s <session> [args and such]\n",
+		UsageText: "skillshare-dl --class <class> -cookies <cookies> [args and such]\n",
 		ArgsUsage: "[args and such]",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -54,9 +54,9 @@ func main() {
 				Category: "Required:",
 			},
 			&cli.StringFlag{
-				Name:     "session",
-				Aliases:  []string{"s"},
-				Usage:    "Session id for get content to skillshare, you can get session id from cookie in browser with key (PHPSESSID)",
+				Name:     "cookies",
+				Aliases:  []string{"co"},
+				Usage:    "String cookies for get content to skillshare, visit https://api.skillshare.com with logged in membership account, inspect element, goto tab console, type document.cookie, copy the string and paste here",
 				Category: "Required:",
 			},
 			&cli.StringFlag{
@@ -87,10 +87,10 @@ func main() {
 			}
 
 			err := services.NewSkillshare(ctx).Run(models.Config{
-				UrlOrId:   cliCtx.String("class"),
-				SessionId: cliCtx.String("session"),
-				Lang:      cliCtx.String("language"),
-				Dir:       cliCtx.String("directory"),
+				UrlOrId: cliCtx.String("class"),
+				Cookies: cliCtx.String("cookies"),
+				Lang:    cliCtx.String("language"),
+				Dir:     cliCtx.String("directory"),
 			})
 			if err != nil {
 				return err

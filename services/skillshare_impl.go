@@ -142,7 +142,7 @@ func (s *skillshare) loadDir() error {
 func (s *skillshare) fetchClassApi() (*models.ClassData, error) {
 	client := &http.Client{}
 	url := fmt.Sprintf(constants.APIClass, s.conf.ID)
-	logger.Debugf("Prepare request API with class id: %s", s.conf.ID)
+	logger.Debugf("Prepare request API with class id: %d", s.conf.ID)
 	req, err := http.NewRequestWithContext(s.ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -154,7 +154,7 @@ func (s *skillshare) fetchClassApi() (*models.ClassData, error) {
 		"User-Agent": {"Skillshare/5.3.0; Android 9.0.1"},
 		"Host":       {"api.skillshare.com"},
 		"Referer":    {"https://www.skillshare.com/"},
-		"cookie":     {fmt.Sprintf("PHPSESSID=%s", s.conf.SessionId)},
+		"cookie":     {s.conf.Cookies},
 	}
 
 	logger.Debugf("[%d] Send request to API", s.conf.ID)
@@ -166,6 +166,10 @@ func (s *skillshare) fetchClassApi() (*models.ClassData, error) {
 	logger.Debugf("[%d] Has status code: %d", s.conf.ID, resp.StatusCode)
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, fmt.Errorf("Skillshare class not found")
+	}
+
+	if resp.StatusCode == http.StatusInternalServerError {
+		return nil, fmt.Errorf("invalid Skillshare cookies")
 	}
 
 	logger.Debugf("[%d] Read response body", s.conf.ID)
@@ -209,7 +213,11 @@ func (s *skillshare) fetchVideoApi(videoID int) (*models.VideoData, error) {
 
 	logger.Debugf("[%d] Has status code: %d", videoID, resp.StatusCode)
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("Skillshare video not found")
+		return nil, fmt.Errorf("Skillshare video id %d not found", videoID)
+	}
+
+	if resp.StatusCode == http.StatusInternalServerError {
+		return nil, fmt.Errorf("Skillshare video id %d internal server error", videoID)
 	}
 
 	dest := &models.VideoData{}
@@ -338,7 +346,7 @@ func (s *skillshare) loadClassData() (*models.ClassData, error) {
 
 	logger.Debug("Check valid video id")
 	if !getData.IsValidVideoId() {
-		return nil, errors.New("invalid video id, please use php session id with premium account")
+		return nil, errors.New("invalid video id, please use cookies with premium account")
 	}
 
 	logger.Info("All video id is valid")

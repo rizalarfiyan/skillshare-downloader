@@ -10,17 +10,17 @@ import (
 )
 
 type Config struct {
-	UrlOrId   string
-	SessionId string
-	Lang      string
-	Dir       string
+	UrlOrId string
+	Cookies string
+	Lang    string
+	Dir     string
 }
 
 type AppConfig struct {
-	ID        int
-	SessionId string
-	Lang      string
-	Dir       string
+	ID      int
+	Cookies string
+	Lang    string
+	Dir     string
 }
 
 func (conf *AppConfig) parseID(config Config) error {
@@ -70,13 +70,14 @@ func (conf *AppConfig) parseID(config Config) error {
 	return errors.New("invalid class id or url")
 }
 
-func (conf *AppConfig) parseSessionID(config Config) error {
-	if config.SessionId == "" {
-		return errors.New("session id is required")
+func (conf *AppConfig) parseCookies(config Config) error {
+	if config.Cookies == "" {
+		return errors.New("cookies is required")
 	}
 
-	logger.Debug("Set session id from config")
-	conf.SessionId = config.SessionId
+	logger.Debug("Set cookies with string cookies")
+	conf.Cookies = config.Cookies
+	logger.Info("Loaded raw text cookies")
 	return nil
 }
 
@@ -108,8 +109,8 @@ func (conf *AppConfig) FromConfig(config Config) error {
 		return err
 	}
 
-	logger.Debug("Do session id")
-	if err := conf.parseSessionID(config); err != nil {
+	logger.Debug("Do parse cookies")
+	if err := conf.parseCookies(config); err != nil {
 		return err
 	}
 

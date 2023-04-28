@@ -78,7 +78,7 @@ type ClassData struct {
 				Wishlist      ClassDataLink `json:"wishlist"`
 			} `json:"_links"`
 		} `json:"teacher"`
-		Units    []any `json:"units"`
+		Units    any `json:"units"`
 		Sessions struct {
 			Links struct {
 				Self ClassDataLink `json:"self"`
@@ -121,6 +121,10 @@ type ClassDataLink struct {
 }
 
 func (cd *ClassData) IsValidVideoId() bool {
+	if len(cd.Embedded.Sessions.Embedded.Sessions) == 0 {
+		return false
+	}
+
 	for _, session := range cd.Embedded.Sessions.Embedded.Sessions {
 		if session.VideoHashedID == "" {
 			return false
