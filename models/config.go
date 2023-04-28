@@ -18,6 +18,7 @@ type Config struct {
 	CookieFile string
 	Lang       string
 	Dir        string
+	Worker     int
 }
 
 type AppConfig struct {
@@ -25,6 +26,7 @@ type AppConfig struct {
 	Cookies string
 	Lang    string
 	Dir     string
+	Worker  int
 }
 
 func (conf *AppConfig) parseID(config Config) error {
@@ -124,6 +126,24 @@ func (conf *AppConfig) parseDirectory(config Config) {
 	conf.Dir = config.Dir
 }
 
+func (conf *AppConfig) parseWorker(config Config) {
+	if config.Worker == 0 {
+		logger.Debug("Set default worker")
+		conf.Worker = constants.DefaultWorker
+		return
+	}
+
+	if config.Worker > constants.MaxWorker {
+		logger.Warningf("Worker large than %s", constants.MaxWorker)
+		logger.Info("Set default worker")
+		conf.Worker = constants.DefaultWorker
+		return
+	}
+
+	logger.Debug("Set worker from config")
+	conf.Worker = config.Worker
+}
+
 func (conf *AppConfig) FromConfig(config Config) error {
 	logger.Debug("Do parse class id")
 	if err := conf.parseID(config); err != nil {
@@ -140,6 +160,9 @@ func (conf *AppConfig) FromConfig(config Config) error {
 
 	logger.Debug("Do directory")
 	conf.parseDirectory(config)
+
+	logger.Debug("Do worker")
+	conf.parseWorker(config)
 
 	return nil
 }

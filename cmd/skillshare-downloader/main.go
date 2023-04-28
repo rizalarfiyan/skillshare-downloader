@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sort"
 	"time"
@@ -79,6 +80,13 @@ func main() {
 				DefaultText: constants.DefaultDir,
 				Category:    "Optional:",
 			},
+			&cli.IntFlag{
+				Name:        "worker",
+				Aliases:     []string{"w"},
+				Usage:       "Worker for concurrent connection to download the video",
+				DefaultText: fmt.Sprint(constants.DefaultWorker),
+				Category:    "Optional:",
+			},
 			&cli.BoolFlag{
 				Name:        "verbose",
 				Aliases:     []string{"vvv"},
@@ -98,6 +106,7 @@ func main() {
 				CookieFile: cliCtx.String("cookie-file"),
 				Lang:       cliCtx.String("language"),
 				Dir:        cliCtx.String("directory"),
+				Worker:     cliCtx.Int("worker"),
 			})
 			if err != nil {
 				return err

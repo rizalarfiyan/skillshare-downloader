@@ -7,6 +7,9 @@ const (
 	DefaultDir             = "./downloaded"
 	DefaultLogFormat       = "[%lvl%]: %time% - %msg% \n"
 	DefaultTimestampFormat = time.DateTime
+	DefaultWorker          = 8
+
+	MaxWorker = 32
 
 	FolderName        = "[%d] %s"
 	FilenameClassData = "class_data.json"

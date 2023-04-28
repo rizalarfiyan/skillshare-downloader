@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/rizalarfiyan/skillshare-downloader/constants"
 	"github.com/rizalarfiyan/skillshare-downloader/logger"
@@ -56,7 +57,7 @@ func (s *skillshare) Run(conf models.Config) error {
 	}
 
 	logger.Debug("Load video data")
-	_, err = s.loadVideoData(*ssClass)
+	_, err = s.workerVideoData(*ssClass)
 	if err != nil {
 		return err
 	}
@@ -251,7 +252,7 @@ func (s *skillshare) createJsonClass(classData models.ClassData) error {
 		log.Fatal(err)
 	}
 
-	logger.Info("Succes create json class id: %s", classData.ID)
+	logger.Infof("Succes create json class id: %s", classData.ID)
 	return nil
 }
 
@@ -353,28 +354,95 @@ func (s *skillshare) loadClassData() (*models.ClassData, error) {
 	return getData, nil
 }
 
-func (s *skillshare) loadVideoData(ssClass models.ClassData) (*models.SkillshareClass, error) {
+type VideoWorker struct {
+	Idx           int
+	VideoId       int
+	Name          string
+	Video         *models.VideoData
+	OriginalVideo models.SkillshareVideo
+	Error         error
+}
+
+func (s *skillshare) createWorkerVideo(ss models.SkillshareClass) <-chan VideoWorker {
+	chanWorker := make(chan VideoWorker)
+
+	go func() {
+		for idx, val := range ss.Videos {
+			chanWorker <- VideoWorker{
+				Idx:           idx,
+				OriginalVideo: val,
+				VideoId:       val.ID,
+				Name:          fmt.Sprintf("%03d. %s", idx+1, val.Title),
+			}
+		}
+
+		close(chanWorker)
+	}()
+
+	return chanWorker
+}
+
+func (s *skillshare) actionWorkerVideo(chanIn <-chan VideoWorker) <-chan VideoWorker {
+	chanWorker := make(chan VideoWorker)
+	wg := new(sync.WaitGroup)
+	wg.Add(s.conf.Worker)
+
+	logger.Debug("Do Loop for videos")
+	go func() {
+		for workerIdx := 0; workerIdx < s.conf.Worker; workerIdx++ {
+			go func(workerIdx int) {
+				for val := range chanIn {
+					logger.Debugf("[%d] Do run video: %s", val.VideoId, val.Name)
+					video, err := s.fetchVideoApi(val.VideoId)
+					if err != nil {
+						val.Error = err
+						chanWorker <- val
+						continue
+					}
+
+					logger.Debugf("[%d] Do create json", val.VideoId)
+					err = s.createJsonVideo(val.Idx, val.OriginalVideo, *video)
+					if err != nil {
+						val.Error = err
+						chanWorker <- val
+						continue
+					}
+
+					logger.Infof("[%d] Success get video", val.VideoId)
+					val.Video = video
+					chanWorker <- val
+				}
+				wg.Done()
+			}(workerIdx)
+		}
+	}()
+
+	go func() {
+		wg.Wait()
+		close(chanWorker)
+	}()
+
+	return chanWorker
+}
+
+func (s *skillshare) workerVideoData(ssClass models.ClassData) (*models.SkillshareClass, error) {
 	logger.Debug("Mapping response api to new struct")
 	ss := ssClass.Mapper()
 
-	logger.Debug("Do Loop for videos")
-	for idx, val := range ss.Videos {
-		logger.Debugf("[%d] Do run video: %03d. %s", val.ID, idx+1, val.Title)
-		video, err := s.fetchVideoApi(val.ID)
-		if err != nil {
-			return nil, err
+	chanIn := s.createWorkerVideo(ss)
+	chanOut := s.actionWorkerVideo(chanIn)
+
+	countError := 0
+	for worker := range chanOut {
+		if worker.Error != nil {
+			logger.Warningf("Error get video %s", worker.Error.Error())
+			countError++
+			continue
 		}
 
-		logger.Debugf("[%d] Do create json", val.ID)
-		err = s.createJsonVideo(idx+1, val, *video)
-		if err != nil {
-			return nil, err
-		}
-
-		logger.Debugf("[%d] Mapping data source to subtitle", val.ID)
-		ss.Videos[idx].AddSourceSubtitle(*video)
-
-		logger.Infof("[%d] Success fetch video: %03d. %s", val.ID, idx+1, val.Title)
+		logger.Debugf("[%d] Mapping data source to subtitle", worker.VideoId)
+		ss.Videos[worker.Idx].AddSourceSubtitle(*worker.Video)
+		logger.Infof("[%d] Success fetch video: %03d. %s", worker.VideoId, worker.Idx+1, ss.Videos[worker.Idx].Title)
 	}
 
 	return &ss, nil
