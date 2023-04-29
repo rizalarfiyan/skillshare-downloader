@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"fmt"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -46,4 +48,17 @@ func ToSnakeCase(str string) string {
 		prev = curr
 	}
 	return sb.String()
+}
+
+func MatchExtenstion(filename string, defaultExtension string) string {
+	extension := defaultExtension
+	ext := filepath.Ext(filename)
+	if ext != "" {
+		re := regexp.MustCompile(`\.(\w+)[\*\?]`)
+		match := re.FindStringSubmatch(filename)
+		if len(match) > 1 {
+			extension = fmt.Sprintf(".%s", strings.ToLower(match[1]))
+		}
+	}
+	return extension
 }

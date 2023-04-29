@@ -11,7 +11,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 
@@ -67,6 +66,11 @@ func (s *skillshare) Run(conf models.Config) error {
 	}
 
 	err = s.workerDownloadVideo(*ssData)
+	if err != nil {
+		return err
+	}
+
+	err = s.workerDownloadSubtitle(*ssData)
 	if err != nil {
 		return err
 	}
@@ -247,6 +251,47 @@ func (s *skillshare) fetchVideoApi(videoID int) (*models.VideoData, error) {
 	return dest, nil
 }
 
+func (s *skillshare) fetchSubtitle(sub SubtitleWorker) ([]byte, error) {
+	client := &http.Client{}
+	logger.Debugf("Prepare request subtitle video id: %d (%s)", sub.VideoId, sub.Label)
+	req, err := http.NewRequestWithContext(s.ctx, "GET", sub.Src, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Debugf("[%d](%s) Prepare request header", sub.VideoId, sub.Label)
+	req.Header = http.Header{
+		"Accept":     {"application/vnd.skillshare.class+json;,version=0.8"},
+		"User-Agent": {"Skillshare/5.3.0; Android 9.0.1"},
+		"Host":       {"skillshare.com"},
+		"Referer":    {"https://www.skillshare.com/"},
+	}
+
+	logger.Debugf("[%d](%s) Send request to API", sub.VideoId, sub.Label)
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Debugf("[%d](%s) Has status code: %d", sub.VideoId, sub.Label, resp.StatusCode)
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("subtitle not found")
+	}
+
+	if resp.StatusCode == http.StatusInternalServerError {
+		return nil, err
+	}
+
+	logger.Debugf("[%d](%s) Read response body", sub.VideoId, sub.Label)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	logger.Infof("[%d](%s) Success get class data from api", sub.VideoId, sub.Label)
+	return body, nil
+}
+
 func (s *skillshare) createJsonClass(classData models.ClassData) error {
 	logger.Debug("Pretty json class data")
 	value, err := json.MarshalIndent(classData, "", "    ")
@@ -281,6 +326,20 @@ func (s *skillshare) createJsonVideo(idx int, videoData models.SkillshareVideo, 
 	}
 
 	logger.Infof("[%d] Succes create json video id", videoData.ID)
+	return nil
+}
+
+func (s *skillshare) createSubtitle(sub SubtitleWorker, data []byte) error {
+	extension := utils.MatchExtenstion(sub.Src, ".vtt")
+	filename := fmt.Sprintf(constants.FilenameSubtitle, sub.Idx+1, utils.ToSnakeCase(sub.Title), strings.ToLower(sub.Label), extension)
+	fileSubtitle := path.Join(s.dir.subtitle, filename)
+	logger.Debugf("[%d](%s) Write json class data to file: %s", sub.VideoId, sub.Label, fileSubtitle)
+	err := os.WriteFile(fileSubtitle, data, os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	logger.Infof("[%d](%s) Succes create subtitle", sub.VideoId, sub.Label)
 	return nil
 }
 
@@ -497,16 +556,8 @@ func (s *skillshare) workerDownloadVideo(ssData models.SkillshareClass) error {
 
 		logger.Debugf("[%d] Preapare download video", val.ID)
 		source := val.Sources[0]
-		extension := fmt.Sprintf(".%s", strings.ToLower(source.Container))
-		ext := filepath.Ext(source.Src)
-		if ext != "" {
-			re := regexp.MustCompile(`\.(\w+)\*`)
-			match := re.FindStringSubmatch(source.Src)
-			if len(match) > 1 {
-				extension = fmt.Sprintf(".%s", strings.ToLower(match[1]))
-			}
-		}
 
+		extension := utils.MatchExtenstion(source.Src, fmt.Sprintf(".%s", strings.ToLower(source.Container)))
 		fileName := fmt.Sprintf(constants.FilenameVideo, idx+1, utils.ToSnakeCase(title), extension)
 		filePath := filepath.Join(s.dir.video, fileName)
 
@@ -527,6 +578,94 @@ func (s *skillshare) workerDownloadVideo(ssData models.SkillshareClass) error {
 		}
 
 		bar.Finish()
+	}
+
+	return nil
+}
+
+type SubtitleWorker struct {
+	models.SkillshareVideoSubtitle
+
+	Title   string
+	Idx     int
+	VideoId int
+	Error   error
+}
+
+func (s *skillshare) createWorkerSubtitle(ss models.SkillshareClass) <-chan SubtitleWorker {
+	chanWorker := make(chan SubtitleWorker)
+
+	go func() {
+		for idx, val := range ss.Videos {
+			for _, sub := range val.Subtitles {
+				chanWorker <- SubtitleWorker{
+					SkillshareVideoSubtitle: sub,
+					Title:                   val.Title,
+					Idx:                     idx,
+					VideoId:                 val.ID,
+				}
+			}
+		}
+
+		close(chanWorker)
+	}()
+
+	return chanWorker
+}
+
+func (s *skillshare) actionWorkerSubtitle(chanIn <-chan SubtitleWorker) <-chan SubtitleWorker {
+	chanWorker := make(chan SubtitleWorker)
+	wg := new(sync.WaitGroup)
+	wg.Add(s.conf.Worker)
+
+	logger.Debug("Do Loop for subtitles")
+	go func() {
+		for workerIdx := 0; workerIdx < s.conf.Worker; workerIdx++ {
+			go func(workerIdx int) {
+				for val := range chanIn {
+					logger.Debugf("[%d](%s) Do run download sutitle", val.VideoId, val.Label)
+					data, err := s.fetchSubtitle(val)
+					if err != nil {
+						val.Error = err
+						chanWorker <- val
+						continue
+					}
+
+					logger.Debugf("[%d](%s) Do create subtitle", val.VideoId, val.Label)
+					err = s.createSubtitle(val, data)
+					if err != nil {
+						val.Error = err
+						chanWorker <- val
+						continue
+					}
+
+					logger.Infof("[%d](%s) Success download subtitle", val.VideoId, val.Label)
+					chanWorker <- val
+				}
+				wg.Done()
+			}(workerIdx)
+		}
+	}()
+
+	go func() {
+		wg.Wait()
+		close(chanWorker)
+	}()
+
+	return chanWorker
+}
+
+func (s *skillshare) workerDownloadSubtitle(ssData models.SkillshareClass) error {
+	chanIn := s.createWorkerSubtitle(ssData)
+	chanOut := s.actionWorkerSubtitle(chanIn)
+
+	countError := 0
+	for worker := range chanOut {
+		if worker.Error != nil {
+			logger.Warningf("Error get subtitle %s", worker.Error.Error())
+			countError++
+			continue
+		}
 	}
 
 	return nil
