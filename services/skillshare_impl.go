@@ -11,13 +11,14 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
 
-	pb "github.com/cheggaaa/pb/v3"
-
 	"github.com/briandowns/spinner"
+	"github.com/cheggaaa/pb/v3"
+	"github.com/melbahja/got"
 	"github.com/rizalarfiyan/skillshare-downloader/constants"
 	"github.com/rizalarfiyan/skillshare-downloader/logger"
 	"github.com/rizalarfiyan/skillshare-downloader/models"
@@ -504,7 +505,7 @@ func (s *skillshare) workerVideoData(ssClass models.ClassData) (*models.Skillsha
 	ss := ssClass.Mapper()
 
 	if !s.conf.IsVerbose {
-		s.spin.Suffix = fmt.Sprintf(" [%d/%d] Fetching skillshare video data with id\n", 0, len(ss.Videos))
+		s.spin.Suffix = fmt.Sprintf(" \x1b[36m[%d/%d]\x1b[0m Fetching skillshare video data with id\n", 0, len(ss.Videos))
 		s.spin.Start()
 	}
 
@@ -522,7 +523,7 @@ func (s *skillshare) workerVideoData(ssClass models.ClassData) (*models.Skillsha
 
 		countSuccess++
 		if !s.conf.IsVerbose {
-			s.spin.Suffix = fmt.Sprintf(" [%d/%d] Fetching skillshare video data with id\n", countSuccess, len(ss.Videos))
+			s.spin.Suffix = fmt.Sprintf(" \x1b[36m[%d/%d]\x1b[0m Fetching skillshare video data with id\n", countSuccess, len(ss.Videos))
 		}
 
 		logger.Debugf("[%d] Mapping data source to subtitle", worker.VideoId)
@@ -566,15 +567,11 @@ func (s *skillshare) workerDownloadVideo(ssData models.SkillshareClass) error {
 		}
 	}()
 
-	dl := NewDownloader(s.conf.Worker)
-	errorCount := 0
-
 	for idx, val := range ssData.Videos {
 		title := utils.SafeName(val.Title)
 		if len(val.Sources) < 1 {
 			logger.Warningf("[%d] Video %s has no source", val.ID, title)
 			logger.Infof("[%d] Skipping download", val.ID)
-			errorCount++
 			continue
 		}
 
@@ -585,22 +582,25 @@ func (s *skillshare) workerDownloadVideo(ssData models.SkillshareClass) error {
 		fileName := fmt.Sprintf(constants.FilenameVideo, idx+1, utils.ToSnakeCase(title), extension)
 		filePath := filepath.Join(s.dir.video, fileName)
 
+		logger.Infof("\x1b[36m\x1b[36m[%d/%d]\x1b[0m\x1b[0m %s", idx+1, len(ssData.Videos), val.Title)
+		var bar *pb.ProgressBar
+		dl := got.New()
+		dl.ProgressFunc = func(download *got.Download) {
+			download.Concurrency = uint(runtime.NumCPU())
+			if bar == nil {
+				bar = pb.ProgressBarTemplate(constants.ProgressBarTemplate).Start64(int64(download.TotalSize()))
+				bar.Set(pb.Bytes, true)
+			}
+			bar.SetCurrent(int64(download.Size()))
+		}
+
 		logger.Debugf("[%d] Do download video: %s", val.ID, val.Title)
-		downloadStatus, err := dl.Download(source.Src, filePath)
+		err := dl.Download(source.Src, filePath)
 		if err != nil {
 			return err
 		}
 
-		logger.Infof("[%d/%d] %s", idx+1, len(ssData.Videos), val.Title)
-		var bar *pb.ProgressBar
-		for p := range downloadStatus {
-			if bar == nil {
-				bar = pb.Start64(p.TotalSize)
-				bar.Set(pb.Bytes, true)
-			}
-			bar.Add64(p.ChunkSize)
-		}
-
+		bar.SetCurrent(bar.Total())
 		bar.Finish()
 	}
 
@@ -725,7 +725,7 @@ func (s *skillshare) checkLanguage(ssData models.SkillshareClass) models.Checkla
 
 func (s *skillshare) workerDownloadSubtitle(ss models.SkillshareClass) error {
 	if !s.conf.IsVerbose {
-		s.spin.Suffix = fmt.Sprintf(" [%d/%d] Fetching skillshare video data with id\n", 0, len(ss.Videos))
+		s.spin.Suffix = fmt.Sprintf(" \x1b[36m[%d/%d]\x1b[0m Fetching skillshare video data with id\n", 0, len(ss.Videos))
 		s.spin.Start()
 	}
 
@@ -743,7 +743,7 @@ func (s *skillshare) workerDownloadSubtitle(ss models.SkillshareClass) error {
 
 		countSuccess++
 		if !s.conf.IsVerbose {
-			s.spin.Suffix = fmt.Sprintf(" [%d/%d] Download skillshare subtitle data with language %s\n", countSuccess, len(ss.Videos), worker.Label)
+			s.spin.Suffix = fmt.Sprintf(" \x1b[36m[%d/%d]\x1b[0m Download skillshare subtitle data with language %s\n", countSuccess, len(ss.Videos), worker.Label)
 		}
 	}
 
