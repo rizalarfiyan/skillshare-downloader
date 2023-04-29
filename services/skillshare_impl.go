@@ -10,8 +10,12 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
+
+	pb "github.com/cheggaaa/pb/v3"
 
 	"github.com/rizalarfiyan/skillshare-downloader/constants"
 	"github.com/rizalarfiyan/skillshare-downloader/logger"
@@ -57,7 +61,12 @@ func (s *skillshare) Run(conf models.Config) error {
 	}
 
 	logger.Debug("Load video data")
-	_, err = s.workerVideoData(*ssClass)
+	ssData, err := s.workerVideoData(*ssClass)
+	if err != nil {
+		return err
+	}
+
+	err = s.workerDownloadVideo(*ssData)
 	if err != nil {
 		return err
 	}
@@ -263,7 +272,7 @@ func (s *skillshare) createJsonVideo(idx int, videoData models.SkillshareVideo, 
 		return err
 	}
 
-	filename := fmt.Sprintf(constants.FilenameVideoData, idx, utils.ToSnakeCase(videoData.Title))
+	filename := fmt.Sprintf(constants.FilenameVideoData, idx+1, utils.ToSnakeCase(videoData.Title))
 	fileJson := path.Join(s.dir.json, filename)
 	logger.Debugf("[%d] Write json class data to file: %s", videoData.ID, fileJson)
 	err = os.WriteFile(fileJson, value, os.ModePerm)
@@ -446,4 +455,79 @@ func (s *skillshare) workerVideoData(ssClass models.ClassData) (*models.Skillsha
 	}
 
 	return &ss, nil
+}
+
+func (s *skillshare) cleanVideoDir() error {
+	files, err := utils.SearchFiles(s.dir.video, "*.part*")
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		if err := os.Remove(file); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *skillshare) workerDownloadVideo(ssData models.SkillshareClass) error {
+	defer func() {
+		if rec := recover(); rec != nil {
+			logger.Debug("Do clean video dir")
+			err := s.cleanVideoDir()
+			if err != nil {
+				panic(err)
+			}
+		}
+	}()
+
+	dl := NewDownloader(s.conf.Worker)
+	errorCount := 0
+
+	for idx, val := range ssData.Videos {
+		title := utils.SafeName(val.Title)
+		if len(val.Sources) < 1 {
+			logger.Warningf("[%d] Video %s has no source", val.ID, title)
+			logger.Infof("[%d] Skipping download", val.ID)
+			errorCount++
+			continue
+		}
+
+		logger.Debugf("[%d] Preapare download video", val.ID)
+		source := val.Sources[0]
+		extension := fmt.Sprintf(".%s", strings.ToLower(source.Container))
+		ext := filepath.Ext(source.Src)
+		if ext != "" {
+			re := regexp.MustCompile(`\.(\w+)\*`)
+			match := re.FindStringSubmatch(source.Src)
+			if len(match) > 1 {
+				extension = fmt.Sprintf(".%s", strings.ToLower(match[1]))
+			}
+		}
+
+		fileName := fmt.Sprintf(constants.FilenameVideo, idx+1, utils.ToSnakeCase(title), extension)
+		filePath := filepath.Join(s.dir.video, fileName)
+
+		logger.Debugf("[%d] Do download video: %s", val.ID, val.Title)
+		downloadStatus, err := dl.Download(source.Src, filePath)
+		if err != nil {
+			return err
+		}
+
+		logger.Infof("[%d] Download video: %s", val.ID, val.Title)
+		var bar *pb.ProgressBar
+		for p := range downloadStatus {
+			if bar == nil {
+				bar = pb.Start64(p.TotalSize)
+				bar.Set(pb.Bytes, true)
+			}
+			bar.Add64(p.ChunkSize)
+		}
+
+		bar.Finish()
+	}
+
+	return nil
 }

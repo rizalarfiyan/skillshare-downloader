@@ -1,6 +1,9 @@
 package utils
 
-import "os"
+import (
+	"os"
+	"path/filepath"
+)
 
 func IsExistPath(pathname string) bool {
 	_, err := os.Stat(pathname)
@@ -32,5 +35,36 @@ func ReadDir(root string) ([]string, error) {
 	for _, file := range fileInfo {
 		files = append(files, file.Name())
 	}
+	return files, nil
+}
+
+func SearchFiles(path string, pattern string) ([]string, error) {
+	var files []string
+
+	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		matched, err := filepath.Match(pattern, filepath.Base(path))
+		if err != nil {
+			return err
+		}
+
+		if matched {
+			files = append(files, path)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
 	return files, nil
 }
