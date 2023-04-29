@@ -26,10 +26,9 @@ type skillshare struct {
 	ctx  context.Context
 	conf models.AppConfig
 	dir  struct {
-		base     string
-		json     string
-		video    string
-		subtitle string
+		base  string
+		json  string
+		video string
 	}
 }
 
@@ -143,13 +142,6 @@ func (s *skillshare) loadDir() error {
 		return err
 	}
 
-	s.dir.subtitle = path.Join(s.dir.base, "subtitle")
-	logger.Debugf("Create directory: %s", s.dir.subtitle)
-	err = utils.CreateDir(s.dir.subtitle)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -251,7 +243,7 @@ func (s *skillshare) fetchVideoApi(videoID int) (*models.VideoData, error) {
 	return dest, nil
 }
 
-func (s *skillshare) fetchSubtitle(sub SubtitleWorker) ([]byte, error) {
+func (s *skillshare) fetchSubtitle(sub models.SubtitleWorker) ([]byte, error) {
 	client := &http.Client{}
 	logger.Debugf("Prepare request subtitle video id: %d (%s)", sub.VideoId, sub.Label)
 	req, err := http.NewRequestWithContext(s.ctx, "GET", sub.Src, nil)
@@ -306,7 +298,7 @@ func (s *skillshare) createJsonClass(classData models.ClassData) error {
 		log.Fatal(err)
 	}
 
-	logger.Infof("Succes create json class id: %s", classData.ID)
+	logger.Infof("Succes create json class id: %d", classData.ID)
 	return nil
 }
 
@@ -329,10 +321,10 @@ func (s *skillshare) createJsonVideo(idx int, videoData models.SkillshareVideo, 
 	return nil
 }
 
-func (s *skillshare) createSubtitle(sub SubtitleWorker, data []byte) error {
+func (s *skillshare) createSubtitle(sub models.SubtitleWorker, data []byte) error {
 	extension := utils.MatchExtenstion(sub.Src, ".vtt")
-	filename := fmt.Sprintf(constants.FilenameSubtitle, sub.Idx+1, utils.ToSnakeCase(sub.Title), strings.ToLower(sub.Label), extension)
-	fileSubtitle := path.Join(s.dir.subtitle, filename)
+	filename := fmt.Sprintf(constants.FilenameSubtitle, sub.Idx+1, utils.ToSnakeCase(sub.Title), extension)
+	fileSubtitle := path.Join(s.dir.video, filename)
 	logger.Debugf("[%d](%s) Write json class data to file: %s", sub.VideoId, sub.Label, fileSubtitle)
 	err := os.WriteFile(fileSubtitle, data, os.ModePerm)
 	if err != nil {
@@ -422,21 +414,12 @@ func (s *skillshare) loadClassData() (*models.ClassData, error) {
 	return getData, nil
 }
 
-type VideoWorker struct {
-	Idx           int
-	VideoId       int
-	Name          string
-	Video         *models.VideoData
-	OriginalVideo models.SkillshareVideo
-	Error         error
-}
-
-func (s *skillshare) createWorkerVideo(ss models.SkillshareClass) <-chan VideoWorker {
-	chanWorker := make(chan VideoWorker)
+func (s *skillshare) createWorkerVideo(ss models.SkillshareClass) <-chan models.VideoWorker {
+	chanWorker := make(chan models.VideoWorker)
 
 	go func() {
 		for idx, val := range ss.Videos {
-			chanWorker <- VideoWorker{
+			chanWorker <- models.VideoWorker{
 				Idx:           idx,
 				OriginalVideo: val,
 				VideoId:       val.ID,
@@ -450,8 +433,8 @@ func (s *skillshare) createWorkerVideo(ss models.SkillshareClass) <-chan VideoWo
 	return chanWorker
 }
 
-func (s *skillshare) actionWorkerVideo(chanIn <-chan VideoWorker) <-chan VideoWorker {
-	chanWorker := make(chan VideoWorker)
+func (s *skillshare) actionWorkerVideo(chanIn <-chan models.VideoWorker) <-chan models.VideoWorker {
+	chanWorker := make(chan models.VideoWorker)
 	wg := new(sync.WaitGroup)
 	wg.Add(s.conf.Worker)
 
@@ -583,22 +566,20 @@ func (s *skillshare) workerDownloadVideo(ssData models.SkillshareClass) error {
 	return nil
 }
 
-type SubtitleWorker struct {
-	models.SkillshareVideoSubtitle
+func (s *skillshare) createWorkerSubtitle(ss models.SkillshareClass) <-chan models.SubtitleWorker {
+	chanWorker := make(chan models.SubtitleWorker)
 
-	Title   string
-	Idx     int
-	VideoId int
-	Error   error
-}
-
-func (s *skillshare) createWorkerSubtitle(ss models.SkillshareClass) <-chan SubtitleWorker {
-	chanWorker := make(chan SubtitleWorker)
+	lang := s.checkLanguage(ss)
+	s.conf.Lang = lang.Lang
 
 	go func() {
 		for idx, val := range ss.Videos {
 			for _, sub := range val.Subtitles {
-				chanWorker <- SubtitleWorker{
+				if !strings.EqualFold(lang.Lang, sub.Lang) {
+					continue
+				}
+
+				chanWorker <- models.SubtitleWorker{
 					SkillshareVideoSubtitle: sub,
 					Title:                   val.Title,
 					Idx:                     idx,
@@ -613,8 +594,8 @@ func (s *skillshare) createWorkerSubtitle(ss models.SkillshareClass) <-chan Subt
 	return chanWorker
 }
 
-func (s *skillshare) actionWorkerSubtitle(chanIn <-chan SubtitleWorker) <-chan SubtitleWorker {
-	chanWorker := make(chan SubtitleWorker)
+func (s *skillshare) actionWorkerSubtitle(chanIn <-chan models.SubtitleWorker) <-chan models.SubtitleWorker {
+	chanWorker := make(chan models.SubtitleWorker)
 	wg := new(sync.WaitGroup)
 	wg.Add(s.conf.Worker)
 
@@ -653,6 +634,50 @@ func (s *skillshare) actionWorkerSubtitle(chanIn <-chan SubtitleWorker) <-chan S
 	}()
 
 	return chanWorker
+}
+
+func (s *skillshare) checkLanguage(ssData models.SkillshareClass) models.Checklang {
+	sub := models.Checklang{
+		IsFalid: true,
+		Lang:    s.conf.Lang,
+	}
+
+	if strings.EqualFold(s.conf.Lang, constants.DefaultLanguage) {
+		return sub
+	}
+
+	for idx, val := range ssData.Videos {
+		if idx == 0 {
+			mapKey := make(map[string]string)
+			for _, item := range val.Subtitles {
+				key := strings.ToLower(strings.Split(item.Lang, "-")[0])
+				mapKey[key] = item.Lang
+			}
+
+			getKey := strings.ToLower(strings.Split(sub.Lang, "-")[0])
+			if subOri, ok := mapKey[getKey]; ok {
+				sub.Lang = strings.ToLower(subOri)
+			} else {
+				logger.Infof("[%d] language %s not found, change to default lang", val.ID, sub.Lang)
+				sub.Lang = strings.ToLower(constants.DefaultLanguage)
+			}
+
+			continue
+		}
+
+		mapKey := make(map[string]bool)
+		for _, item := range val.Subtitles {
+			key := strings.ToLower(item.Lang)
+			mapKey[key] = true
+		}
+
+		if _, ok := mapKey[sub.Lang]; !ok {
+			sub.IsFalid = false
+			break
+		}
+	}
+
+	return sub
 }
 
 func (s *skillshare) workerDownloadSubtitle(ssData models.SkillshareClass) error {

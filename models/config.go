@@ -57,11 +57,8 @@ func (conf *AppConfig) parseID(config Config) error {
 	match := regex.FindStringSubmatch(config.UrlOrId)
 	if len(match) > 0 {
 		language := match[1]
-		if language == "" {
-			logger.Debug("Set default language")
-			language = constants.DefaultLanguage
-		}
-		if conf.Lang == "" {
+		if language != "" {
+			logger.Debug("Set language from url")
 			conf.Lang = language
 		}
 		logger.Debug("Parse class id string to number")
@@ -105,14 +102,16 @@ func (conf *AppConfig) parseCookies(config Config) error {
 }
 
 func (conf *AppConfig) parseLanguage(config Config) {
-	if config.Lang == "" && conf.Lang != "" {
+	if config.Lang == "" && conf.Lang == "" {
 		logger.Debug("Set default language")
 		conf.Lang = constants.DefaultLanguage
 		return
 	}
 
-	logger.Debug("Set language from config")
-	conf.Lang = config.Lang
+	if config.Lang != "" && conf.Lang == "" {
+		logger.Debug("Set language from config")
+		conf.Lang = config.Lang
+	}
 }
 
 func (conf *AppConfig) parseDirectory(config Config) {

@@ -309,3 +309,26 @@ type VideoData struct {
 type VideoDataSource struct {
 	Src string `json:"src"`
 }
+
+type VideoWorker struct {
+	Idx           int
+	VideoId       int
+	Name          string
+	Video         *VideoData
+	OriginalVideo SkillshareVideo
+	Error         error
+}
+
+type SubtitleWorker struct {
+	SkillshareVideoSubtitle
+
+	Title   string
+	Idx     int
+	VideoId int
+	Error   error
+}
+
+type Checklang struct {
+	IsFalid bool
+	Lang    string
+}
