@@ -19,14 +19,16 @@ type Config struct {
 	Lang       string
 	Dir        string
 	Worker     int
+	IsVerbose  bool
 }
 
 type AppConfig struct {
-	ID      int
-	Cookies string
-	Lang    string
-	Dir     string
-	Worker  int
+	ID        int
+	Cookies   string
+	Lang      string
+	Dir       string
+	Worker    int
+	IsVerbose bool
 }
 
 func (conf *AppConfig) parseID(config Config) error {
@@ -162,6 +164,8 @@ func (conf *AppConfig) FromConfig(config Config) error {
 
 	logger.Debug("Do worker")
 	conf.parseWorker(config)
+
+	conf.IsVerbose = config.IsVerbose
 
 	return nil
 }

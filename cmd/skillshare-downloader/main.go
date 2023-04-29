@@ -96,7 +96,8 @@ func main() {
 			},
 		},
 		Action: func(cliCtx *cli.Context) error {
-			if cliCtx.Bool("verbose") {
+			isVerbose := cliCtx.Bool("verbose")
+			if isVerbose {
 				logger.SetLevel(logrus.DebugLevel)
 			}
 
@@ -107,6 +108,7 @@ func main() {
 				Lang:       cliCtx.String("language"),
 				Dir:        cliCtx.String("directory"),
 				Worker:     cliCtx.Int("worker"),
+				IsVerbose:  isVerbose,
 			})
 			if err != nil {
 				return err

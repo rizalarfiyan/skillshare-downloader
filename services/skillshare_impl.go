@@ -13,9 +13,11 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	pb "github.com/cheggaaa/pb/v3"
 
+	"github.com/briandowns/spinner"
 	"github.com/rizalarfiyan/skillshare-downloader/constants"
 	"github.com/rizalarfiyan/skillshare-downloader/logger"
 	"github.com/rizalarfiyan/skillshare-downloader/models"
@@ -25,6 +27,7 @@ import (
 type skillshare struct {
 	ctx  context.Context
 	conf models.AppConfig
+	spin *spinner.Spinner
 	dir  struct {
 		base  string
 		json  string
@@ -33,8 +36,13 @@ type skillshare struct {
 }
 
 func NewSkillshare(ctx context.Context) Skillshare {
+	spin := spinner.New(spinner.CharSets[78], 100*time.Millisecond, func(s *spinner.Spinner) {
+		s.Color("green")
+	})
+
 	return &skillshare{
-		ctx: ctx,
+		ctx:  ctx,
+		spin: spin,
 	}
 }
 
@@ -191,7 +199,7 @@ func (s *skillshare) fetchClassApi() (*models.ClassData, error) {
 		return nil, err
 	}
 
-	logger.Infof("[%d] Success get class data from api", s.conf.ID)
+	logger.Debugf("[%d] Success get class data from api", s.conf.ID)
 	return dest, nil
 }
 
@@ -239,7 +247,7 @@ func (s *skillshare) fetchVideoApi(videoID int) (*models.VideoData, error) {
 		return nil, err
 	}
 
-	logger.Infof("[%d] Success get class data from api", videoID)
+	logger.Debugf("[%d] Success get video data from api", videoID)
 	return dest, nil
 }
 
@@ -280,7 +288,7 @@ func (s *skillshare) fetchSubtitle(sub models.SubtitleWorker) ([]byte, error) {
 		return nil, err
 	}
 
-	logger.Infof("[%d](%s) Success get class data from api", sub.VideoId, sub.Label)
+	logger.Debugf("[%d](%s) Success get subtitle data from api", sub.VideoId, sub.Label)
 	return body, nil
 }
 
@@ -298,7 +306,7 @@ func (s *skillshare) createJsonClass(classData models.ClassData) error {
 		log.Fatal(err)
 	}
 
-	logger.Infof("Succes create json class id: %d", classData.ID)
+	logger.Debugf("Succes create json class id: %d", classData.ID)
 	return nil
 }
 
@@ -317,7 +325,7 @@ func (s *skillshare) createJsonVideo(idx int, videoData models.SkillshareVideo, 
 		log.Fatal(err)
 	}
 
-	logger.Infof("[%d] Succes create json video id", videoData.ID)
+	logger.Debugf("[%d] Succes create json video id", videoData.ID)
 	return nil
 }
 
@@ -331,7 +339,7 @@ func (s *skillshare) createSubtitle(sub models.SubtitleWorker, data []byte) erro
 		log.Fatal(err)
 	}
 
-	logger.Infof("[%d](%s) Succes create subtitle", sub.VideoId, sub.Label)
+	logger.Debugf("[%d](%s) Succes create subtitle", sub.VideoId, sub.Label)
 	return nil
 }
 
@@ -383,10 +391,19 @@ func (s *skillshare) loadClassData() (*models.ClassData, error) {
 		return getCache, nil
 	}
 
+	if !s.conf.IsVerbose {
+		s.spin.Suffix = fmt.Sprintf(" Fetching skillshare class data with id %d\n", s.conf.ID)
+		s.spin.Start()
+	}
+
 	logger.Debug("Do load fetch data to api")
 	getData, err := s.fetchClassApi()
 	if err != nil {
 		return nil, err
+	}
+
+	if !s.conf.IsVerbose {
+		s.spin.Suffix = " Create skillshare json data\n"
 	}
 
 	safeTitle := utils.SafeName(getData.Title)
@@ -405,6 +422,12 @@ func (s *skillshare) loadClassData() (*models.ClassData, error) {
 		return nil, err
 	}
 
+	if !s.conf.IsVerbose {
+		s.spin.Suffix = " Fetching skillshare done\n"
+		s.spin.Stop()
+	}
+
+	logger.Info("Skillshare class data is ready")
 	logger.Debug("Check valid video id")
 	if !getData.IsValidVideoId() {
 		return nil, errors.New("invalid video id, please use cookies with premium account")
@@ -459,7 +482,7 @@ func (s *skillshare) actionWorkerVideo(chanIn <-chan models.VideoWorker) <-chan 
 						continue
 					}
 
-					logger.Infof("[%d] Success get video", val.VideoId)
+					logger.Debugf("[%d] Success get video", val.VideoId)
 					val.Video = video
 					chanWorker <- val
 				}
@@ -480,10 +503,16 @@ func (s *skillshare) workerVideoData(ssClass models.ClassData) (*models.Skillsha
 	logger.Debug("Mapping response api to new struct")
 	ss := ssClass.Mapper()
 
+	if !s.conf.IsVerbose {
+		s.spin.Suffix = fmt.Sprintf(" [%d/%d] Fetching skillshare video data with id\n", 0, len(ss.Videos))
+		s.spin.Start()
+	}
+
 	chanIn := s.createWorkerVideo(ss)
 	chanOut := s.actionWorkerVideo(chanIn)
 
 	countError := 0
+	countSuccess := 0
 	for worker := range chanOut {
 		if worker.Error != nil {
 			logger.Warningf("Error get video %s", worker.Error.Error())
@@ -491,10 +520,22 @@ func (s *skillshare) workerVideoData(ssClass models.ClassData) (*models.Skillsha
 			continue
 		}
 
+		countSuccess++
+		if !s.conf.IsVerbose {
+			s.spin.Suffix = fmt.Sprintf(" [%d/%d] Fetching skillshare video data with id\n", countSuccess, len(ss.Videos))
+		}
+
 		logger.Debugf("[%d] Mapping data source to subtitle", worker.VideoId)
 		ss.Videos[worker.Idx].AddSourceSubtitle(*worker.Video)
-		logger.Infof("[%d] Success fetch video: %03d. %s", worker.VideoId, worker.Idx+1, ss.Videos[worker.Idx].Title)
+		logger.Debugf("[%d] Success fetch video: %03d. %s", worker.VideoId, worker.Idx+1, ss.Videos[worker.Idx].Title)
 	}
+
+	if !s.conf.IsVerbose {
+		s.spin.Suffix = " Fetching skillshare video done\n"
+		s.spin.Stop()
+	}
+
+	logger.Info("All video data is ready")
 
 	return &ss, nil
 }
@@ -550,7 +591,7 @@ func (s *skillshare) workerDownloadVideo(ssData models.SkillshareClass) error {
 			return err
 		}
 
-		logger.Infof("[%d] Download video: %s", val.ID, val.Title)
+		logger.Infof("[%d/%d] %s", idx+1, len(ssData.Videos), val.Title)
 		var bar *pb.ProgressBar
 		for p := range downloadStatus {
 			if bar == nil {
@@ -562,6 +603,8 @@ func (s *skillshare) workerDownloadVideo(ssData models.SkillshareClass) error {
 
 		bar.Finish()
 	}
+
+	logger.Info("Download video done")
 
 	return nil
 }
@@ -620,7 +663,7 @@ func (s *skillshare) actionWorkerSubtitle(chanIn <-chan models.SubtitleWorker) <
 						continue
 					}
 
-					logger.Infof("[%d](%s) Success download subtitle", val.VideoId, val.Label)
+					logger.Debugf("[%d](%s) Success download subtitle", val.VideoId, val.Label)
 					chanWorker <- val
 				}
 				wg.Done()
@@ -680,18 +723,36 @@ func (s *skillshare) checkLanguage(ssData models.SkillshareClass) models.Checkla
 	return sub
 }
 
-func (s *skillshare) workerDownloadSubtitle(ssData models.SkillshareClass) error {
-	chanIn := s.createWorkerSubtitle(ssData)
+func (s *skillshare) workerDownloadSubtitle(ss models.SkillshareClass) error {
+	if !s.conf.IsVerbose {
+		s.spin.Suffix = fmt.Sprintf(" [%d/%d] Fetching skillshare video data with id\n", 0, len(ss.Videos))
+		s.spin.Start()
+	}
+
+	chanIn := s.createWorkerSubtitle(ss)
 	chanOut := s.actionWorkerSubtitle(chanIn)
 
 	countError := 0
+	countSuccess := 0
 	for worker := range chanOut {
 		if worker.Error != nil {
 			logger.Warningf("Error get subtitle %s", worker.Error.Error())
 			countError++
 			continue
 		}
+
+		countSuccess++
+		if !s.conf.IsVerbose {
+			s.spin.Suffix = fmt.Sprintf(" [%d/%d] Download skillshare subtitle data with language %s\n", countSuccess, len(ss.Videos), worker.Label)
+		}
 	}
+
+	if !s.conf.IsVerbose {
+		s.spin.Suffix = " Download skillshare subtitle done\n"
+		s.spin.Stop()
+	}
+
+	logger.Info("Download subtitle done")
 
 	return nil
 }
