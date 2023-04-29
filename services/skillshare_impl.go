@@ -100,7 +100,6 @@ func (s *skillshare) splash() {
     `
 
 	fmt.Printf("\n%s\n\n", text)
-	panic("test")
 }
 
 func (s *skillshare) initDir() error {
