@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/rizalarfiyan/skillshare-downloader/constants"
@@ -13,6 +14,16 @@ import (
 	"github.com/rizalarfiyan/skillshare-downloader/services"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
+)
+
+// these information will be collected when build, by `-ldflags "-X main.appVersion=0.1"`
+const notSet string = "not set"
+
+var (
+	appVersion = notSet
+	buildTime  = notSet
+	gitCommit  = notSet
+	gitRef     = notSet
 )
 
 func init() {
@@ -34,10 +45,15 @@ func main() {
 		Usage:   "Print the version of skillshare downloader",
 	}
 
+	cli.VersionPrinter = func(cCtx *cli.Context) {
+		fmt.Println(cCtx.App.Name)
+		fmt.Println(strings.Replace(cCtx.App.Version, "\n\t ", "\n", -1))
+	}
+
 	app := &cli.App{
 		Name:     "Skillshare Downloader",
-		Usage:    "Download the skillshare video with premium account! 🎉",
-		Version:  "v1.0.0",
+		Usage:    "Download the skillshare video with premium account! 🎉 \nDO NOT use this project for piracy! \nI'm not responsible for the use of this program, this is only for personal and educational purpose.\nBefore any usage please read the Skillshare Terms of Service. https://skillshare.com/terms",
+		Version:  fmt.Sprintf("version = %s \n\t build_time = %s \n\t git_commit = %s \n\t git_ref = %s", appVersion, buildTime, gitCommit, gitRef),
 		Compiled: time.Now(),
 		Authors: []*cli.Author{
 			{
