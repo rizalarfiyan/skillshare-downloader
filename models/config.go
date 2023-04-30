@@ -156,6 +156,9 @@ func (conf *AppConfig) FromConfig(config Config) error {
 		return err
 	}
 
+	logger.Debug("Clean Cookies")
+	conf.Cookies = utils.CleanCookies(conf.Cookies)
+
 	logger.Debug("Do language")
 	conf.parseLanguage(config)
 

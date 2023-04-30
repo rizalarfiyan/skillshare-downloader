@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
+	"strings"
 )
 
 func GetCookieTxt(pathfile string) (string, error) {
@@ -22,4 +24,11 @@ func GetCookieTxt(pathfile string) (string, error) {
 	}
 
 	return cookies, nil
+}
+
+func CleanCookies(cookie string) string {
+	re := regexp.MustCompile(`\n{2,}`)
+	cookie = strings.TrimSpace(cookie)
+	cookie = re.ReplaceAllString(cookie, "\n")
+	return strings.ReplaceAll(cookie, "\n", " ")
 }
