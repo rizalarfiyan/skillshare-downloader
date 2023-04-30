@@ -46,7 +46,20 @@ func main() {
 	}
 
 	cli.VersionPrinter = func(cCtx *cli.Context) {
-		fmt.Println(cCtx.App.Name)
+		var authors []string
+		if cCtx.App.Authors != nil {
+			for _, author := range cCtx.App.Authors {
+				authors = append(authors, author.Name)
+			}
+		}
+
+		var author string
+		if len(authors) > 0 {
+			author += "by "
+			author += strings.Join(authors, ", ")
+		}
+
+		fmt.Printf("%s %s\n\n", cCtx.App.Name, author)
 		fmt.Println(strings.Replace(cCtx.App.Version, "\n\t ", "\n", -1))
 	}
 
