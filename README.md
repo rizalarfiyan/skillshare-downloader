@@ -26,11 +26,8 @@ $ wget https://github.com/rizalarfiyan/skillshare-downloader/releases/latest/dow
 # Extract archive
 $ tar xvzf skillshare-downloader-linux-amd64.tar.gz
 
-# Give execute permission
-$ sudo chmod +x ./skillshare-downloader
-
 # Show all command
-$ ./skillshare-downloader help 
+$ ./skillshare-downloader help
 ```
 
 ### Other Platforms
