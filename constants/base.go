@@ -19,11 +19,13 @@ const (
 	ProgressBarTemplate = `{{counters .}} - {{ bar . "[" "=" (cycle . ">" ) "-" "]"}} {{percent .}} {{speed .}}`
 
 	// Credentials SKillshare
-	PolicyKey           = "BCpkADawqM2OOcM6njnM7hf9EaK6lIFlqiXB0iWjqGWUQjU7R8965xUvIQNqdQbnDTLz0IAO7E6Ir2rIbXJtFdzrGtitoee0n1XXRliD-RH9A-svuvNW9qgo3Bh34HEZjXjG4Nml4iyz3KqF"
-	BrightcoveAccountId = 3695997568001
+	PolicyKey = "BCpkADawqM2OOcM6njnM7hf9EaK6lIFlqiXB0iWjqGWUQjU7R8965xUvIQNqdQbnDTLz0IAO7E6Ir2rIbXJtFdzrGtitoee0n1XXRliD-RH9A-svuvNW9qgo3Bh34HEZjXjG4Nml4iyz3KqF"
 )
 
 var (
 	MaxWorker     int = runtime.NumCPU()
 	DefaultWorker int = MaxWorker
+
+	// Credentials SKillshare
+	BrightcoveAccountId int64 = 3695997568001
 )
