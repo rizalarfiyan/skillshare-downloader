@@ -86,20 +86,8 @@ func (s *skillshare) Run(conf models.Config) error {
 	return nil
 }
 
-// ` + "`" + `
 func (s *skillshare) splash() {
-	text := `
-    +=----------------------------------------------------------------------------------------------------------=+
-    
-    .d88b. 8    w 8 8      8                        888b.                        8               8            
-    YPwww. 8.dP w 8 8 d88b 8d8b. .d88 8d8b .d88b    8   8 .d8b. Yb  db  dP 8d8b. 8 .d8b. .d88 .d88 .d88b 8d8b 
-        d8 88b  8 8 8 ` + "`" + `Yb. 8P Y8 8  8 8P   8.dP'    8   8 8' .8  YbdPYbdP  8P Y8 8 8' .8 8  8 8  8 8.dP' 8P   
-    ` + "`" + `Y88P' 8 Yb 8 8 8 Y88P 8   8 ` + "`" + `Y88 8    ` + "`" + `Y88P    888P' ` + "`" + `Y8P'   YP  YP   8   8 8 ` + "`" + `Y8P' ` + "`" + `Y88 ` + "`" + `Y88 ` + "`" + `Y88P 8
-
-    +=-------------------------------------------- By Rizal Arfiyan --------------------------------------------=+
-    `
-
-	fmt.Printf("\n%s\n\n", text)
+	fmt.Printf("\n%s\n\n", constants.SplashScreen)
 }
 
 func (s *skillshare) initDir() error {

@@ -50,6 +50,8 @@ func main() {
 		fmt.Println(strings.Replace(cCtx.App.Version, "\n\t ", "\n", -1))
 	}
 
+	cli.AppHelpTemplate = fmt.Sprintf("%s\n\n%s", constants.SplashScreen, cli.AppHelpTemplate)
+
 	app := &cli.App{
 		Name:     "Skillshare Downloader",
 		Usage:    "Download the skillshare video with premium account! 🎉 \nDO NOT use this project for piracy! \nI'm not responsible for the use of this program, this is only for personal and educational purpose.\nBefore any usage please read the Skillshare Terms of Service. https://skillshare.com/terms",
