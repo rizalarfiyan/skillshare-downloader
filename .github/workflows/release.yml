@@ -18,8 +18,6 @@ jobs:
         goarch: ["386", amd64]
         exclude:
           - goarch: "386"
-            goos: windows
-          - goarch: "386"
             goos: darwin
     steps:
       - uses: actions/checkout@v3
@@ -39,5 +37,5 @@ jobs:
           ldflags: -X "main.appVersion=${{ env.APP_VERSION }}" -X "main.buildTime=${{ env.BUILD_TIME }}" -X main.gitCommit=${{ github.sha }} -X main.gitRef=${{ github.ref }}
           goversion: "https://dl.google.com/go/go1.20.3.linux-amd64.tar.gz"
           binary_name: "skillshare-downloader"
-          asset_name: "${BINARY_NAME}-${GOOS}-${GOARCH}"
+          asset_name: "skillshare-downloader-${{ matrix.goos }}-${{ matrix.goarch }}"
           extra_files: LICENSE README.md
