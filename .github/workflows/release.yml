@@ -34,4 +34,5 @@ jobs:
           ldflags: -X "main.appVersion=${{ env.APP_VERSION }}" -X "main.buildTime=${{ env.BUILD_TIME }}" -X main.gitCommit=${{ github.sha }} -X main.gitRef=${{ github.ref }}
           goversion: "https://dl.google.com/go/go1.20.3.linux-amd64.tar.gz"
           binary_name: "skillshare-downloader"
+          asset_name: "${BINARY_NAME}-${GOOS}-${GOARCH}"
           extra_files: LICENSE README.md
