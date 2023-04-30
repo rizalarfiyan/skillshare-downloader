@@ -15,9 +15,11 @@ jobs:
     strategy:
       matrix:
         goos: [linux, windows, darwin]
-        goarch: ["386", amd64]
+        goarch: ["386", amd64, arm64]
         exclude:
           - goarch: "386"
+            goos: windows
+          - goarch: arm64
             goos: windows
           - goarch: "386"
             goos: darwin
@@ -37,3 +39,5 @@ jobs:
           project_path: "${{ env.CMD_PATH }}"
           build_flags: -v
           ldflags: -X "main.appVersion=${{ env.APP_VERSION }}" -X "main.buildTime=${{ env.BUILD_TIME }}" -X main.gitCommit=${{ github.sha }} -X main.gitRef=${{ github.ref }}
+          goversion: "https://dl.google.com/go/go1.20.3.linux-amd64.tar.gz"
+          extra_files: LICENSE README.md
