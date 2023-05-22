@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/gosimple/slug"
 )
 
 func SafeName(filename string) string {
@@ -31,23 +33,8 @@ func DecodeAscii(str string) string {
 }
 
 func ToSnakeCase(str string) string {
-	reSafe := regexp.MustCompile(`(?m)[^A-Za-z0-9- ]+`)
-	safeStr := reSafe.ReplaceAllString(str, "")
-	str = strings.ReplaceAll(safeStr, " ", "_")
-	var sb strings.Builder
-	var prev rune
-	for _, curr := range str {
-		if curr >= 'A' && curr <= 'Z' {
-			if prev >= 'a' && prev <= 'z' {
-				sb.WriteRune('_')
-			}
-			sb.WriteRune(curr + ('a' - 'A'))
-		} else {
-			sb.WriteRune(curr)
-		}
-		prev = curr
-	}
-	return sb.String()
+	tempStr := slug.MakeLang(str, "en")
+	return strings.ReplaceAll(tempStr, "-", "_")
 }
 
 func MatchExtenstion(filename string, defaultExtension string) string {
