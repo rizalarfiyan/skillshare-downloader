@@ -35,3 +35,6 @@ $ ./skillshare-downloader help
 2. Extract the archive
 3. Give execute permission to it
 4. Execute the skillshare-downloader file
+
+## How to Use
+https://github.com/rizalarfiyan/skillshare-downloader/assets/19503666/60dfea25-8c99-40e1-9145-0d69f82672f3
